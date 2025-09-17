@@ -69,9 +69,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             shoppingCart.setNumber(1);
             shoppingCart.setCreateTime(LocalDateTime.now());
             shoppingCartMapper.insert(shoppingCart);
-
         }
-
     }
 
     /**
@@ -86,7 +84,6 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                 .build();
         List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
         return list;
-
     }
 
     /**
@@ -95,6 +92,32 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
     @Override
     public void cleanShoppingCart() {
         Long userId = BaseContext.getCurrentId();
-        shoppingCartMapper.deleteById(userId);
+        shoppingCartMapper.deleteByUserId(userId);
+    }
+
+    /**
+     减少购物车其中一个商品的数量
+     * @param shoppingCartDTO
+     */
+    @Override
+    public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
+        //判断是套餐还是菜品
+        ShoppingCart shoppingCart = new ShoppingCart();
+        BeanUtils.copyProperties(shoppingCartDTO,shoppingCart);
+        shoppingCart.setUserId(BaseContext.getCurrentId());
+        //获得数据库中的单条记录
+        List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
+
+        if(list != null && !list.isEmpty()){
+            shoppingCart = list.get(0);
+            int number = shoppingCart.getNumber();
+            if(number == 1){
+                //删除这个记录
+                shoppingCartMapper.deleteById(shoppingCart.getId());
+            }else{
+                shoppingCart.setNumber(number - 1);
+                shoppingCartMapper.updateNumberById(shoppingCart);
+            }
+        }
     }
 }
