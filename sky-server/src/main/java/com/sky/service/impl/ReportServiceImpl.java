@@ -1,5 +1,6 @@
 package com.sky.service.impl;
 
+import com.sky.dto.GoodsSalesDTO;
 import com.sky.entity.OrderDetail;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrderDetailMapper;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -191,62 +193,17 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
         LocalDateTime endTime = LocalDateTime.of(end, LocalTime.MAX);
 
-        Map map = new HashMap();
-        map.put("begin", beginTime);
-        map.put("end", endTime);
-        map.put("status", Orders.COMPLETED);
+        List<GoodsSalesDTO> salesTop10 = orderMapper.getSalesTop10(beginTime, endTime);
+        List<String> names = salesTop10.stream().map(GoodsSalesDTO::getName).collect(Collectors.toList());
+        String nameList = StringUtils.join(names, ",");
 
-        List<Orders> ordersList =  orderMapper.getByMap(map);
-
-
-        for (Orders orders : ordersList) {
-            log.info("订单id: {}", orders.getId());
-        }
-
-        Map<String, Integer> dishAndSetmealList = new HashMap<>();
-        for (Orders orders : ordersList) {
-            List<OrderDetail> orderDetailList = orderDetailMapper.getByOrderId(orders.getId());
-            for(OrderDetail orderDetail : orderDetailList){
-                if(!dishAndSetmealList.containsKey(orderDetail.getName())){
-                    dishAndSetmealList.put(orderDetail.getName(), orderDetail.getNumber());
-                }else{
-                    Integer num =  dishAndSetmealList.get(orderDetail.getName()) + orderDetail.getNumber();
-                    dishAndSetmealList.put(orderDetail.getName(), num);
-                }
-            }
-        }
-
-        log.info("销量和菜品map: {}", dishAndSetmealList);
-
-        TreeSet<Map.Entry<String, Integer>> sortedMap = new TreeSet<>(
-                Comparator.comparingInt(Map.Entry<String, Integer>::getValue)
-                        .reversed()                  // 降序
-                        .thenComparing(Map.Entry::getKey) // 保留相同 value 的不同 key
-        );
-
-        sortedMap.addAll(dishAndSetmealList.entrySet());
-
-        List<String> nameList = new ArrayList<>();
-        List<Integer> numberList = new ArrayList<>();
-        int count = 0;
-
-        for (Map.Entry<String, Integer> entry : sortedMap) {
-            if(count == 10){
-                break;
-            }else{
-                nameList.add(entry.getKey());
-                numberList.add(entry.getValue());
-            }
-            count++;
-        }
-
-        log.info("菜品名: {}", nameList);
-        log.info("数量: {}", numberList);
+        List<Integer> numbers = salesTop10.stream().map(GoodsSalesDTO::getNumber).collect(Collectors.toList());
+        String numberList = StringUtils.join(numbers, ",");
 
         return SalesTop10ReportVO
                 .builder()
-                .nameList(StringUtils.join(nameList, ","))
-                .numberList(StringUtils.join(numberList, ","))
+                .nameList(nameList)
+                .numberList(numberList)
                 .build();
     }
 }
